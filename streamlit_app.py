@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import mean_squared_error, r2_score
+import numpy as np
 
 # Set page title
 st.title("House Price Prediction using SVR")
