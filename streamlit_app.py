@@ -5,6 +5,11 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score
 
+python -m venv env
+source env/bin/activate  # Untuk Linux/MacOS
+env\Scripts\activate     # Untuk Windows
+
+
 # Set page title
 st.title("House Price Prediction using SVR")
 
