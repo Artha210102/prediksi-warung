@@ -1,100 +1,50 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
+import pickle
+import re
 
-# Set page title
-st.title("House Price Prediction using SVR")
+# 1. Konfigurasi Halaman
+st.set_page_config(page_title="Analisis Sentimen JAKI", page_icon="📊")
+st.title("Prediksi Sentimen Ulasan Aplikasi JAKI")
+st.write("Masukkan teks ulasan untuk memprediksi sentimen (Positif atau Negatif).")
 
-# Load data
-@st.cache_data
-def load_data():
-    return pd.read_csv("kc_house_data.csv")
+# 2. Memuat Model dan Vektorizer
+@st.cache_resource
+def muat_model():
+    with open('model_sentimen_terbaik.pkl', 'rb') as file_model:
+        model = pickle.load(file_model)
+    with open('vektorizer_tfidf.pkl', 'rb') as file_vektor:
+        vektorizer = pickle.load(file_vektor)
+    return model, vektorizer
 
-df = load_data()
+model, vektorizer = muat_model()
 
-# Sidebar for navigation
-st.sidebar.header("Navigation")
-options = st.sidebar.radio("Go to:", ["Data Exploration", "Model Training", "Prediction"])
+# 3. Fungsi Pembersihan Teks (Sesuai tahap preprocessing)
+def bersihkan_teks_input(teks):
+    teks = teks.lower()
+    teks = re.sub(r'[^a-z\s]', '', teks)
+    # Catatan: Anda dapat menambahkan integrasi Sastrawi di sini jika diperlukan
+    return teks
 
-# Data Exploration
-if options == "Data Exploration":
-    st.header("Exploratory Data Analysis")
+# 4. Antarmuka Pengguna (Input)
+teks_pengguna = st.text_area("Tulis ulasan di sini:", height=150)
 
-    st.subheader("Dataset Overview")
-    st.write(df.head())
-
-    st.subheader("Statistical Summary")
-    st.write(df.describe())
-
-    st.subheader("Missing Values")
-    st.write(df.isnull().sum())
-
-    st.subheader("Univariate Analysis")
-    feature = st.selectbox("Select feature for analysis", df.columns)
-    fig, ax = plt.subplots(1, 2, figsize=(12, 4))
-    sns.histplot(df[feature], kde=True, ax=ax[0])
-    sns.boxplot(x=df[feature], ax=ax[1])
-    st.pyplot(fig)
-
-    st.subheader("Correlation Heatmap")
-    fig, ax = plt.subplots(figsize=(10, 6))
-    sns.heatmap(df.corr(), annot=True, cmap="coolwarm", ax=ax)
-    st.pyplot(fig)
-
-# Model Training
-elif options == "Model Training":
-    st.header("Train the SVR Model")
-
-    # Select features
-    features = st.multiselect("Select features for prediction", 
-                               df.columns[:-1], default=['bedrooms', 'bathrooms', 'sqft_living', 'grade', 'yr_built'])
-
-    x = df[features]
-    y = df['price']
-
-    # Train-test split
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=4)
-
-    # Standardize data
-    scaler = StandardScaler()
-    x_train_scaled = scaler.fit_transform(x_train)
-    x_test_scaled = scaler.transform(x_test)
-
-    # Train SVR model
-    svr = SVR(kernel='rbf', C=100, epsilon=0.1)
-    svr.fit(x_train_scaled, y_train)
-
-    # Evaluate model
-    y_pred = svr.predict(x_test_scaled)
-    mse = mean_squared_error(y_test, y_pred)
-    r2 = r2_score(y_test, y_pred)
-
-    st.write("**Model Performance:**")
-    st.write(f"Mean Squared Error: {mse:.2f}")
-    st.write(f"R² Score: {r2:.2f}")
-
-# Prediction
-elif options == "Prediction":
-    st.header("Predict House Price")
-
-    st.write("Enter the features of the house:")
-
-    # Filter only numeric columns for user input
-    numeric_columns = df.select_dtypes(include=['float64', 'int64']).columns
-
-    input_features = []
-    for col in numeric_columns:
-        val = st.number_input(f"{col}", value=float(df[col].mean()))
-        input_features.append(val)
-
-    input_features = [input_features]
-    scaler = StandardScaler()
-    scaler.fit(df[numeric_columns])  # Fit the scaler on the numeric columns
-    input_scaled = scaler.transform(input_features)
-
-    # Train SVR model
-    svr = SVR(kernel='rbf', C=100, epsilon=0.1)
-    svr.fit(scaler.fit_transform(df[numeric_columns]), df['price'])  # Fit the model on the numeric columns
-    predicted_price = svr.predict(input_scaled)
-
-    st.write(f"**Predicted Price:** ${predicted_price[0]:,.2f}")
+# 5. Tombol Prediksi
+if st.button("Prediksi Sentimen"):
+    if teks_pengguna.strip() == "":
+        st.warning("Teks ulasan tidak boleh kosong. Silakan ketik sesuatu.")
+    else:
+        # Proses Pembersihan
+        teks_bersih = bersihkan_teks_input(teks_pengguna)
+        
+        # Proses Vektorisasi
+        teks_vektor = vektorizer.transform([teks_bersih])
+        
+        # Proses Prediksi
+        hasil_prediksi = model.predict(teks_vektor)
+        
+        # Menampilkan Hasil
+        st.subheader("Hasil Prediksi:")
+        if hasil_prediksi[0] == 1:
+            st.success("Sentimen: POSITIF (Rating 4-5)")
+        else:
+            st.error("Sentimen: NEGATIF (Rating 1-2)")
